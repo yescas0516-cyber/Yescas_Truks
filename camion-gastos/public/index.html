@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Control del camión</title>
+<style>
+:root{--bg:#eef1f0;--card:#fff;--ink:#1b2a2f;--mut:#5f6f73;--line:#d5dcdb;--in:#1f7a4d;--out:#b3402a;--acc:#1d4e89}
+@media(prefers-color-scheme:dark){:root{--bg:#141b1e;--card:#1d272b;--ink:#e6ecec;--mut:#93a3a6;--line:#31403f;--in:#4fc185;--out:#ee8068;--acc:#6fa8e6}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+h1,h2{margin:0;font-weight:700;letter-spacing:-.01em}
+.wrap{max-width:1000px;margin:0 auto;padding:16px}
+header{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:16px;margin-bottom:16px}
+label{display:block;font-size:13px;color:var(--mut);margin-bottom:4px}
+input,select,button{font:inherit;color:inherit}
+input,select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;background:var(--bg)}
+input:focus,select:focus,button:focus-visible{outline:2px solid var(--acc);outline-offset:1px}
+button{cursor:pointer;border:1px solid var(--line);background:var(--card);padding:9px 14px;border-radius:6px}
+button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+button.link{border:0;background:none;color:var(--acc);padding:2px 6px}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(150px,1fr))}
+.totals{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-bottom:16px}
+.tot{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px 16px}
+.tot b{display:block;font-size:26px;font-variant-numeric:tabular-nums}
+.tot span{color:var(--mut);font-size:13px}
+.in{color:var(--in)}.out{color:var(--out)}
+table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+th,td{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+th{font-size:13px;color:var(--mut);font-weight:600}
+td.n,th.n{text-align:right}
+.scroll{overflow-x:auto}
+.bar{display:grid;grid-template-columns:130px 1fr 90px;gap:8px;align-items:center;margin:6px 0;font-size:14px}
+.bar i{display:block;height:10px;background:var(--out);border-radius:3px}
+.err{color:var(--out);min-height:20px;margin:8px 0 0}
+.login{max-width:340px;margin:12vh auto}
+.hide{display:none}
+.seg{display:flex;gap:0}.seg label{flex:1;margin:0;color:var(--ink)}
+.seg input{position:absolute;opacity:0}
+.seg span{display:block;text-align:center;padding:9px;border:1px solid var(--line);cursor:pointer}
+.seg label:first-child span{border-radius:6px 0 0 6px}.seg label:last-child span{border-radius:0 6px 6px 0;border-left:0}
+.seg input:checked+span{background:var(--acc);color:#fff;border-color:var(--acc)}
+.seg input:focus-visible+span{outline:2px solid var(--acc);outline-offset:1px}
+.empty{color:var(--mut);padding:12px 0}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div id="login" class="card login hide">
+  <h1>Control del camión</h1>
+  <p style="color:var(--mut)">Inicia sesión para ver tus ingresos y gastos.</p>
+  <label for="u">Usuario</label><input id="u" autocomplete="username">
+  <label for="p" style="margin-top:10px">Clave</label><input id="p" type="password" autocomplete="current-password">
+  <p class="err" id="lerr"></p>
+  <button class="primary" id="lbtn" style="width:100%">Entrar</button>
+</div>
+
+<div id="app" class="hide">
+  <header>
+    <h1>Control del camión</h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <button id="addTruck">Agregar camión</button>
+      <button id="logout">Salir</button>
+    </div>
+  </header>
+
+  <div class="card grid">
+    <div><label for="fCam">Camión</label><select id="fCam"></select></div>
+    <div><label for="fDesde">Desde</label><input id="fDesde" type="date"></div>
+    <div><label for="fHasta">Hasta</label><input id="fHasta" type="date"></div>
+  </div>
+
+  <div class="totals">
+    <div class="tot"><span>Ingresos</span><b class="in" id="tIn">$0</b></div>
+    <div class="tot"><span>Gastos</span><b class="out" id="tOut">$0</b></div>
+    <div class="tot"><span>Utilidad</span><b id="tNet">$0</b></div>
+  </div>
+
+  <form class="card" id="form">
+    <h2 id="formTitle" style="margin-bottom:12px">Registrar movimiento</h2>
+    <div class="grid">
+      <div><label>Tipo</label>
+        <div class="seg">
+          <label><input type="radio" name="tipo" value="gasto" checked><span>Gasto</span></label>
+          <label><input type="radio" name="tipo" value="ingreso"><span>Ingreso</span></label>
+        </div></div>
+      <div><label for="mCam">Camión</label><select id="mCam" required></select></div>
+      <div><label for="mCat">Categoría</label><input id="mCat" list="cats" required><datalist id="cats"></datalist></div>
+      <div><label for="mMonto">Monto</label><input id="mMonto" type="number" step="0.01" min="0.01" inputmode="decimal" required></div>
+      <div><label for="mFecha">Fecha</label><input id="mFecha" type="date" required></div>
+      <div style="grid-column:1/-1"><label for="mDesc">Descripción (opcional)</label><input id="mDesc" placeholder="Ej. Cambio de balatas delanteras"></div>
+    </div>
+    <p class="err" id="ferr"></p>
+    <button class="primary" type="submit" id="save">Guardar movimiento</button>
+    <button type="button" id="cancel" class="hide">Cancelar edición</button>
+  </form>
+
+  <div class="card"><h2 style="margin-bottom:8px">Gastos por categoría</h2><div id="cats-chart"></div></div>
+  <div class="card scroll"><h2 style="margin-bottom:8px">Por mes</h2>
+    <table><thead><tr><th>Mes</th><th class="n">Ingresos</th><th class="n">Gastos</th><th class="n">Utilidad</th></tr></thead><tbody id="months"></tbody></table></div>
+
+  <div class="card scroll"><h2 style="margin-bottom:8px">Movimientos</h2>
+    <table><thead><tr><th>Fecha</th><th>Camión</th><th>Categoría</th><th>Descripción</th><th class="n">Monto</th><th></th></tr></thead><tbody id="rows"></tbody></table>
+    <div id="none" class="empty hide">Aún no hay movimientos en este periodo. Registra el primero arriba.</div></div>
+</div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>new Intl.NumberFormat('es-MX',{style:'currency',currency:'MXN'}).format(n);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const CATS=['Refacciones','Combustible','Mantenimiento','Llantas','Casetas','Sueldo operador','Seguro','Multas','Flete','Otro'];
+let token=localStorage.getItem('tk'), camiones=[], movs=[], editId=null;
+
+async function api(path,opts={}){
+  const r=await fetch('/api'+path,{...opts,headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:opts.body&&JSON.stringify(opts.body)});
+  if(r.status===401&&path!=='/login'){logout();throw new Error('Sesión vencida')}
+  const d=await r.json(); if(!r.ok)throw new Error(d.error||'Error'); return d;
+}
+function logout(){localStorage.removeItem('tk');token=null;$('app').classList.add('hide');$('login').classList.remove('hide')}
+$('logout').onclick=logout;
+
+$('lbtn').onclick=async()=>{
+  $('lerr').textContent='';
+  try{const d=await api('/login',{method:'POST',body:{usuario:$('u').value,clave:$('p').value}});
+    token=d.token;localStorage.setItem('tk',token);start()}catch(e){$('lerr').textContent=e.message}
+};
+$('p').onkeydown=e=>{if(e.key==='Enter')$('lbtn').click()};
+
+async function start(){
+  $('login').classList.add('hide');$('app').classList.remove('hide');
+  $('cats').innerHTML=CATS.map(c=>`<option value="${c}">`).join('');
+  $('mFecha').value=new Date().toISOString().slice(0,10);
+  await loadTrucks();refresh();
+}
+async function loadTrucks(){
+  camiones=await api('/camiones');
+  const opts=camiones.map(c=>`<option value="${c.id}">${esc(c.nombre)}${c.placas?' · '+esc(c.placas):''}</option>`).join('');
+  const cur=$('fCam').value;
+  $('fCam').innerHTML='<option value="">Todos los camiones</option>'+opts;$('fCam').value=cur;
+  $('mCam').innerHTML=opts;
+}
+$('addTruck').onclick=async()=>{
+  const nombre=prompt('Nombre del camión (ej. Kenworth rojo)');if(!nombre)return;
+  const placas=prompt('Placas (opcional)')||'';
+  await api('/camiones',{method:'POST',body:{nombre,placas}});await loadTrucks();
+};
+
+function qs(){
+  const p=new URLSearchParams();
+  if($('fCam').value)p.set('camion_id',$('fCam').value);
+  if($('fDesde').value)p.set('desde',$('fDesde').value);
+  if($('fHasta').value)p.set('hasta',$('fHasta').value);
+  return p.toString()?'?'+p:'';
+}
+async function refresh(){
+  const [res,list]=await Promise.all([api('/resumen'+qs()),api('/movimientos'+qs())]);
+  movs=list;
+  $('tIn').textContent=money(res.ingresos);$('tOut').textContent=money(res.gastos);
+  $('tNet').textContent=money(res.utilidad);$('tNet').className=res.utilidad>=0?'in':'out';
+  const max=Math.max(...res.porCategoria.map(c=>c.total),1);
+  $('cats-chart').innerHTML=res.porCategoria.length?res.porCategoria.map(c=>
+    `<div class="bar"><span>${esc(c.categoria)}</span><i style="width:${c.total/max*100}%"></i><span class="n" style="text-align:right">${money(c.total)}</span></div>`).join('')
+    :'<div class="empty">Sin gastos registrados.</div>';
+  $('months').innerHTML=res.porMes.map(m=>`<tr><td>${m.mes}</td><td class="n in">${money(m.ingresos)}</td><td class="n out">${money(m.gastos)}</td><td class="n">${money(m.ingresos-m.gastos)}</td></tr>`).join('');
+  $('rows').innerHTML=list.map(m=>`<tr>
+    <td>${m.fecha.slice(0,10)}</td><td>${esc(m.camion)}</td><td>${esc(m.categoria)}</td><td>${esc(m.descripcion)}</td>
+    <td class="n ${m.tipo==='ingreso'?'in':'out'}">${m.tipo==='ingreso'?'+':'−'}${money(m.monto)}</td>
+    <td style="white-space:nowrap"><button class="link" data-e="${m.id}">Editar</button><button class="link" data-d="${m.id}">Borrar</button></td></tr>`).join('');
+  $('none').classList.toggle('hide',list.length>0);
+}
+['fCam','fDesde','fHasta'].forEach(i=>$(i).onchange=refresh);
+
+$('form').onsubmit=async e=>{
+  e.preventDefault();$('ferr').textContent='';
+  const body={tipo:document.querySelector('[name=tipo]:checked').value,camion_id:$('mCam').value,categoria:$('mCat').value.trim(),
+    monto:$('mMonto').value,fecha:$('mFecha').value,descripcion:$('mDesc').value.trim()};
+  try{
+    await api(editId?'/movimientos/'+editId:'/movimientos',{method:editId?'PUT':'POST',body});
+    resetForm();refresh();
+  }catch(er){$('ferr').textContent=er.message}
+};
+function resetForm(){editId=null;$('mMonto').value='';$('mDesc').value='';$('mCat').value='';
+  $('formTitle').textContent='Registrar movimiento';$('save').textContent='Guardar movimiento';$('cancel').classList.add('hide')}
+$('cancel').onclick=resetForm;
+
+$('rows').onclick=async e=>{
+  const ed=e.target.dataset.e,del=e.target.dataset.d;
+  if(del&&confirm('¿Borrar este movimiento? No se puede deshacer.')){await api('/movimientos/'+del,{method:'DELETE'});refresh()}
+  if(ed){const m=movs.find(x=>x.id==ed);editId=m.id;
+    document.querySelector(`[name=tipo][value=${m.tipo}]`).checked=true;
+    $('mCam').value=m.camion_id;$('mCat').value=m.categoria;$('mMonto').value=m.monto;
+    $('mFecha').value=m.fecha.slice(0,10);$('mDesc').value=m.descripcion||'';
+    $('formTitle').textContent='Editar movimiento';$('save').textContent='Guardar cambios';
+    $('cancel').classList.remove('hide');$('form').scrollIntoView({behavior:'smooth'})}
+};
+
+token?start().catch(logout):$('login').classList.remove('hide');
+</script>
+</body>
+</html>
